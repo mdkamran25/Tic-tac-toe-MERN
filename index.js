@@ -4,7 +4,7 @@ import "./src/db/dbConnection.js";
 import CombinedRouter from "./src/routes/index.js";
 import cors from 'cors'
  const app = express();
-const PORT = 5001;
+const PORT = "https://tic-tac-toe-ey03.onrender.com" || 5001;
 
 app.use(bodyParser.json())
 app.use(cors('*'));
