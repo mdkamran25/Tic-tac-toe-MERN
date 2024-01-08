@@ -3,7 +3,9 @@ import "./game.css";
 import Square from "./square";
 import { winningPatterns } from "../../utils/winnigPattern";
 import { updateGameApi } from "../../api/game.api";
+import io from "socket.io-client";
 
+const socket = io("http://localhost:5001");
 const Game = ({ roomCode, user, game, turn, setTurn, result, setResult }) => {
   const [board, setBoard] = useState(["", "", "", "", "", "", "", "", ""]);
   const [gameStatus, setGameStatus] = useState();
@@ -21,18 +23,27 @@ const Game = ({ roomCode, user, game, turn, setTurn, result, setResult }) => {
       isMounted.current = false;
       return;
     }
-
     const winnerFound = checkWin();
     if (winnerFound) {
+      console.log("winner Found")
       updateGameData();
     }
     checkTie();
+    console.log("updateGameData UseEffect")
     updateGameData();
   }, [board, result.winner]);
 
   const updateGameData = async () => {
     try {
+      console.log("Api Called")
       await updateGameApi({
+        roomCode: roomCode,
+        turn: turn,
+        board: board,
+        winner: result.winner,
+        status: gameStatus,
+      });
+      socket.emit("updateGameData", {
         roomCode: roomCode,
         turn: turn,
         board: board,
@@ -43,6 +54,20 @@ const Game = ({ roomCode, user, game, turn, setTurn, result, setResult }) => {
       console.log(err.message);
     }
   };
+
+  // useEffect(()=>{
+  //   if (isMounted.current) {
+  //     isMounted.current = false;
+  //     return;
+  //   }
+  //   socket.on("recieveUpdateGameData", (updatedGameData) => {
+  //     console.log(updatedGameData, "gameData recieve")
+  //     setTurn(updatedGameData.turn);
+  //     setBoard(updatedGameData.board);
+  //     setGameStatus(updateGameData.status)
+  //     setResult({ winner: updatedGameData.winner, state: "none" });
+  //   });
+  // }, [turn])
 
   const chooseSquare = (square) => {
     if (!gameStatus) {

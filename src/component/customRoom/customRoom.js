@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import Game from "../game/game";
 import { getUserProfile } from "../../api/user.api";
 import { fetchRoomApi } from "../../api/game.api";
-// import { Fireworks } from 'fireworks/lib/react'
-// import { ToastContainer, toast } from "react-toastify";
-// import "react-toastify/dist/ReactToastify.css";
+import io from "socket.io-client";
+
+const socket = io("http://localhost:5001"); // Adjust the URL based on your server
 
 const CustomRoom = () => {
   const [user, setUser] = useState();
@@ -13,8 +13,7 @@ const CustomRoom = () => {
   const [turn, setTurn] = useState();
   const [result, setResult] = useState({ winner: "", state: "none" });
   const { roomCode } = useParams();
-
-
+  const isMounted = useRef(true);
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
@@ -30,15 +29,37 @@ const CustomRoom = () => {
 
   useEffect(() => {
     const fetchGameData = async () => {
+      if (isMounted.current) {
+        isMounted.current = false;
+        return;
+      }
+      console.log("RoomApi Game")
       const res = await fetchRoomApi(roomCode);
       if (!res.status) {
         console.log(res.message);
         return;
       }
+      socket.emit("gameData", res.data);
+      // console.log(res.data, "res data emit")
       setGame(res.data);
     };
     fetchGameData();
-  }, [roomCode]); 
+  }, [roomCode]);
+
+  useEffect(() => {
+    socket.on("recieveGameData", (updatedGameData) => {
+      console.log(updatedGameData, "gameData recieve")
+      setTurn(updatedGameData.turn);
+      setGame(updatedGameData);
+      setResult({ winner: updatedGameData.winner, state: "none" });
+    });
+
+    return () => {
+      socket.off("recieveGameData");
+    };
+  }, [socket]);
+
+  // console.log(game, "game");
 
   return (
     <div>
@@ -57,6 +78,7 @@ const CustomRoom = () => {
           <div className="col-12 col-sm-5 col-md-6 d-flex justify-content-center align-items-center flex-column">
             {game && (
               <Game
+                setGame={setGame}
                 roomCode={roomCode}
                 user={user}
                 game={game}
@@ -76,16 +98,21 @@ const CustomRoom = () => {
           <div className="col-12 mb-4 ps-2 ps-sm-5 col-sm-7 col-md-6">
             <div className="col-12 col-xl-6">
               Your Sybmol:{" "}
-              {user && game && game?.playerX?.email && user?.email === game?.playerX?.email
+              {user &&
+              game &&
+              game?.playerX?.email &&
+              user?.email === game?.playerX?.email
                 ? "X"
                 : "O"}
             </div>
             <div className="col-12 col-xl-6">
               Turn:{" "}
               {game && user && result.winner
-                ? (result.winner === 'none'? "Match Tie" : `Game is completed & winner is ${
-                    game.winner || result.winner
-                  }`)
+                ? result.winner === "none"
+                  ? "Match Tie"
+                  : `Game is completed & winner is ${
+                      game.winner || result.winner
+                    }`
                 : (turn === "X" && user?.email === game?.playerX?.email) ||
                   (turn === "O" && user?.email === game?.playerO?.email)
                 ? "Your Turn"

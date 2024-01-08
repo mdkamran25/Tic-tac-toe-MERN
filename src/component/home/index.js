@@ -7,6 +7,8 @@ import {
   previousDataApi,
 } from "../../api/game.api";
 import PreviousDataTable from "../table/previousDataTable";
+import io from 'socket.io-client';
+const socket = io.connect('http://localhost:5001')
 
 const Home = () => {
   const [user, setUser] = useState(null);
